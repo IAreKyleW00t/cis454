@@ -51,7 +51,7 @@ unsigned short crc(unsigned char msg[], int len) {
 
 int main(int argc, char **argv) {
     unsigned char buf[SIZE];
-    unsigned int ch, len = 0;
+    int ch, len = 0;
     memset(buf, 0x00, sizeof(buf)); //zero out buffer (safety precaution)
 
     /* Check if -trace is set */
@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
 
     /* Continue to get input from stid until
         we reach EOF. */
-    while ((ch = getchar()) != (unsigned int)EOF) {
+    while ((ch = getchar()) != EOF) {
         buf[len++] = ch; //save char
     }
     len += 2; //add 2 zero bytes to end of message
