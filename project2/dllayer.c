@@ -85,10 +85,7 @@ ssize_t dlsend(unsigned char data[], size_t len, bool eof) {
         
         /* Set our SEQ to 1 if needed. */
         if (seq == 1) SET_BIT(frame[0], 3);
-        
-#ifdef DEBUG
-        fprintf(stderr, "Frame #%d (seq %d)\n", count, seq);
-#endif
+        _DEBUG("Frame #%d (seq %d)\n", count, seq);
         
         /* Save our input data into the frame based on the
             size we calculated before. We beginning writing
@@ -107,9 +104,7 @@ ssize_t dlsend(unsigned char data[], size_t len, bool eof) {
             
             /* Send our frame to the server. */
             dlsendto(sk, frame, (size + 3), 0, (struct sockaddr *)&server_remote, sizeof(server_remote), 1);
-#ifdef DEBUG
-            fprintf(stderr, "  > Frame sent\n");
-#endif
+            _DEBUG("  > Frame sent\n");
             
             /* Create and set up variables for select()
                 later on. */
@@ -122,6 +117,7 @@ ssize_t dlsend(unsigned char data[], size_t len, bool eof) {
             tv.tv_usec = 0;
             
             /* Wait for an ACK back from the server. */
+            _DEBUG("  > Waiting\n");
             ret = select((sk + 1), &rfds, NULL, NULL, &tv);
             if (ret == -1) { //Error
                 fprintf(stderr, "select: Failed to wait on socket: %s\n", strerror(errno));
@@ -129,30 +125,30 @@ ssize_t dlsend(unsigned char data[], size_t len, bool eof) {
             } else if (ret) { //Got response
                 read(sk, ack, sizeof(ack));
             } else { //Timeout
-#ifdef DEBUG
-                fprintf(stderr, "  > Timeout\n");
-#endif
+                _DEBUG("  > Timeout\n");
                 continue;
             }
             
             /* Check if ACK is valid (no errors). */
             unsigned short c_ack = crc(ack, sizeof(ack));
             if (c_ack != 0) {
-#ifdef DEBUG
-                fprintf(stderr, "  > Ignore\n");
-#endif
+                _DEBUG("  > Ignore ACK\n");
                 continue;
             }
             
             /* Check if ACK is actually an ACK. */ 
-            if (!CHECK_BIT(ack[0], 1)) continue;
+            if (!CHECK_BIT(ack[0], 1)) {
+                _DEBUG("  > Invalid ACK\n");
+                continue;
+            }
             
             /* Check if ACK matches the SEQ we expected. */
-            if (GET_BIT(ack[0], 3) != seq) continue;
+            if (GET_BIT(ack[0], 3) != seq) {
+                _DEBUG("  > Duplicate ACK\n");
+                continue;
+            }
         
-#ifdef DEBUG
-            fprintf(stderr, "  > Accept\n");
-#endif
+            _DEBUG("  > Accept ACK\n");
             
             /* Break out of loop because we got a valid response. */
             break;
@@ -176,10 +172,10 @@ ssize_t dlsend(unsigned char data[], size_t len, bool eof) {
     return total_bytes_sent;
 }
 
-ssize_t dlrecv(unsigned char data[], size_t len, bool *eof) {
+ssize_t dlrecv(unsigned char data[], size_t len, bool *eof){
     /* Return -1 if dl_init has not been called successfully */
     if (!sk) {
-        fprintf(stderr, "dlsend: Failed to send data: Cannot write to NULL socket\n");
+        fprintf(stderr, "dlsend: Failed to send data: Cannot read from NULL socket\n");
         return -1;
     }
 
@@ -199,22 +195,18 @@ ssize_t dlrecv(unsigned char data[], size_t len, bool *eof) {
     /* Only continue to recv data if we know we
         can fit it into our buffer. */
     while (len >= 125) {
+        _DEBUG("Frame #%d (seq %d)\n", count, seq);
+        _DEBUG("  > Waiting\n");
         /* Wait for a frame from the client and save the
             size of the frame we get. (Max of 128 bytes) */
         size = recvfrom(sk, frame, sizeof(frame), 0, (struct sockaddr *)&client_remote, &clen);
-        
-#ifdef DEBUG
-        fprintf(stderr, "Frame #%d (seq %d)\n", count, seq);
-#endif
         
         /* Calculate the CRC for our frame and check if it is valid.
             If the message is invalid (error occurred) then
             we ignore the frame entirely and do not ACK. */
         unsigned short c = crc(frame, size);
         if (c != 0) {
-#ifdef DEBUG
-            fprintf(stderr, "  > Ignore\n");
-#endif
+            _DEBUG("  > Ignore frame\n");
             continue;
         }
         
@@ -231,15 +223,11 @@ ssize_t dlrecv(unsigned char data[], size_t len, bool *eof) {
         
         /* Check if frame is a duplicate. */
         if (GET_BIT(frame[0], 3) != seq) {
-#ifdef DEBUG
-            fprintf(stderr, "  > Duplicate\n");
-#endif
+            _DEBUG("  > Duplicate frame\n");
 
             /* Send an ACK back to the client. */
-            dlsendto(sk, &ack, sizeof(ack), 0, (struct sockaddr *)&client_remote, sizeof(client_remote), 1);
-#ifdef DEBUG
-            fprintf(stderr, "  > Ack sent\n");
-#endif
+            dlsendto(sk, ack, sizeof(ack), 0, (struct sockaddr *)&client_remote, sizeof(client_remote), 1);
+            _DEBUG("  > Ack sent\n");
             continue;
         }
         
@@ -252,10 +240,8 @@ ssize_t dlrecv(unsigned char data[], size_t len, bool *eof) {
         if (CHECK_BIT(frame[0], 5)) *eof = true;
         
         /* Send an ACK back to the client. */
-        sendto(sk, &ack, sizeof(ack), 0, (struct sockaddr *)&client_remote, sizeof(client_remote));
-#ifdef DEBUG
-        fprintf(stderr, "  > Ack sent\n");
-#endif
+        sendto(sk, ack, sizeof(ack), 0, (struct sockaddr *)&client_remote, sizeof(client_remote));
+        _DEBUG("  > Ack sent\n");
         
         /* Move our pointers so we are ready for the
             next incoming frame. */
