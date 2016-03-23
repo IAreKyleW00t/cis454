@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <sys/types.h>
 
-#define MAX_RETRY 10
+#define MAX_RETRY 16
 
 #define FRAME_SIZE(len) ((len) > 125 ? 125 : (len))
 #define CHECK_BIT(byte, bit) (byte & (1 << (bit)))
