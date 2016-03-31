@@ -215,7 +215,8 @@ ssize_t dlrecv(unsigned char data[], size_t len, bool *eof){
         SET_BIT(ack[0], 1);
         
         /* Set our SEQ to 1 if needed. */
-        if (seq == 1) SET_BIT(ack[0], 3);
+        int frame_seq  = GET_BIT(frame[0], 3);
+        if (frame_seq == 1) SET_BIT(ack[0], 3);
         
         unsigned short c_ack = crc(ack, sizeof(ack));
         ack[1] = (c_ack >> 8) & 0xFF; //MSB
