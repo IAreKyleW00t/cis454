@@ -240,7 +240,7 @@ ssize_t dlrecv(unsigned char data[], size_t len, bool *eof){
         if (CHECK_BIT(frame[0], 5)) *eof = true;
         
         /* Send an ACK back to the client. */
-        sendto(sk, ack, sizeof(ack), 0, (struct sockaddr *)&client_remote, sizeof(client_remote));
+        dlsendto(sk, ack, sizeof(ack), 0, (struct sockaddr *)&client_remote, sizeof(client_remote), 1);
         _DEBUG("  > Ack sent\n");
         
         /* Move our pointers so we are ready for the
